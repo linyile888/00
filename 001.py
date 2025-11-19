@@ -1,0 +1,2 @@
+name="lyl"
+print(name)
