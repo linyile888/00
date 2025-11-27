@@ -1,0 +1,150 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>极简别墅凶杀案：设计谜局</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Arial", "Microsoft YaHei", sans-serif; }
+        body { background: #fff; color: #333; max-width: 1000px; margin: 0 auto; padding: 20px; }
+        .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #eee; }
+        .header h1 { font-size: 28px; font-weight: bold; color: #000; margin-bottom: 10px; }
+        .header p { color: #666; font-size: 16px; }
+        .main { display: flex; gap: 20px; flex-wrap: wrap; }
+        .chat-area { flex: 1; min-width: 600px; }
+        .chat-container { width: 100%; height: 450px; border: 1px solid #eee; padding: 20px; overflow-y: auto; margin-bottom: 20px; border-radius: 2px; }
+        .message { margin-bottom: 15px; line-height: 1.6; padding: 8px 12px; border-radius: 4px; max-width: 80%; }
+        .user-message { background: #f5f5f5; text-align: right; margin-left: auto; }
+        .npc-message { background: #fafafa; text-align: left; margin-right: auto; }
+        .message-prefix { font-weight: bold; margin-right: 8px; color: #000; }
+        .input-area { display: flex; gap: 10px; }
+        .user-input { flex: 1; height: 45px; padding: 0 15px; border: 1px solid #000; font-size: 16px; border-radius: 2px; }
+        .user-input:focus { outline: none; border-width: 2px; }
+        .send-btn { width: 100px; height: 45px; background: #000; color: #fff; border: none; font-size: 16px; cursor: pointer; transition: transform 0.2s; border-radius: 2px; }
+        .send-btn:hover { transform: scale(1.03); }
+        .sidebar { width: 280px; flex-shrink: 0; }
+        .info-card { border: 1px solid #eee; padding: 20px; margin-bottom: 20px; border-radius: 2px; }
+        .info-card h3 { font-size: 18px; color: #000; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
+        .info-list { font-size: 14px; color: #666; line-height: 1.8; }
+        .info-list strong { color: #000; }
+        .keyword { color: #4A90E2; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>极简别墅凶杀案：设计谜局</h1>
+        <p>知名设计师深夜死于极简别墅，你是侦探，通过与嫌疑人对话收集线索，锁定真凶！</p>
+    </div>
+    <div class="main">
+        <div class="chat-area">
+            <div class="chat-container" id="chatContainer">
+                <div class="message npc-message">
+                    <span class="message-prefix">系统：</span>请输入数字1-5选择对话角色，开始收集线索！<br>
+                    1-助理林夏 2-合作方陈默 3-前女友苏晚 4-小区保安 5-法医
+                </div>
+            </div>
+            <div class="input-area">
+                <input type="text" class="user-input" id="userInput" placeholder="输入角色编号（1-5）或提问内容...">
+                <button class="send-btn" onclick="sendMessage()">发送</button>
+                <button class="send-btn" style="background:#666;" onclick="clearInput()">清空</button>
+            </div>
+        </div>
+        <div class="sidebar">
+            <div class="info-card">
+                <h3>案件核心信息</h3>
+                <div class="info-list">
+                    <strong>案发场景：</strong>极简现代别墅客厅（黑白灰主色调）<br>
+                    <strong>死者身份：</strong>知名设计师，死于沙发，无打斗痕迹<br>
+                    <strong>关键线索：</strong>草稿纸"7-3-9"、威士忌杯镇静剂、监控被关、739新品设计<br>
+                    <strong>游戏目标：</strong>通过提问找出真凶，说出“xxx是凶手”结束游戏
+                </div>
+            </div>
+            <div class="info-card">
+                <h3>提问建议</h3>
+                <div class="info-list">
+                    1. 案发当晚你在哪里？<br>
+                    2. 你知道"7-3-9"是什么吗？<br>
+                    3. 你与死者有什么矛盾？<br>
+                    4. 你是否有别墅钥匙/进入权限？<br>
+                    5. 相关物品（螺丝刀/药物）的来源？
+                </div>
+            </div>
+            <div class="info-card">
+                <h3>手机扫码游玩</h3>
+                <div class="info-list">
+                    在同一 Wi-Fi 下，用手机扫描下方二维码即可直接打开本页。<br>
+                    <img src="mystery_game_qr.png" alt="扫码体验游戏" style="width:100%;max-width:220px;margin-top:12px;border:1px solid #eee;border-radius:4px;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chatContainer = document.getElementById('chatContainer');
+        const userInput = document.getElementById('userInput');
+
+        // 发送消息
+        function sendMessage() {
+            const content = userInput.value.trim();
+            if (!content) return;
+
+            // 添加用户消息到聊天框
+            addMessage('user', '你（侦探）', content);
+
+        // 清空输入框
+        userInput.value = '';
+
+            // 调用本地接口获取回复
+            fetch('/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content })
+            })
+            .then(res => res.json())
+            .then(data => {
+                const highlightedReply = highlightKeywords(data.reply);
+                addMessage('npc', data.role, highlightedReply);
+
+                if (data.game_over) {
+                    userInput.disabled = true;
+                    document.querySelectorAll('.send-btn').forEach(btn => btn.disabled = true);
+                }
+            })
+            .catch(() => {
+                addMessage('npc', '系统', '请求失败，请稍后再试。');
+            });
+        }
+
+        // 添加消息到聊天框
+        function addMessage(type, prefix, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}-message`;
+            messageDiv.innerHTML = `<span class="message-prefix">${prefix}：</span>${content.replace(/\n/g, '<br>')}`;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // 高亮关键词
+        function highlightKeywords(text = '') {
+            const keywords = ['林夏', '镇静剂', '739', '7-3-9', '监控', '助眠药', '螺丝刀', '定位', '处方', '威士忌'];
+            keywords.forEach(keyword => {
+                const reg = new RegExp(`(${keyword})`, 'g');
+                text = text.replace(reg, '<span class="keyword">$1</span>');
+            });
+            return text;
+        }
+
+        // 清空输入框
+        function clearInput() {
+            userInput.value = '';
+            userInput.focus();
+        }
+
+        // 回车发送
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+    </script>
+</body>
+</html>
