@@ -1,3 +1,4 @@
+import streamlit as st
 import requests
 import json
 import os  # 新增：用于文件操作
@@ -40,11 +41,68 @@ MEMORY_FOLDER = "4.2_memory_clonebot"
 
 # 角色名到记忆文件名的映射
 ROLE_MEMORY_MAP = {
-    "小丑": "joker_memory.json",
-    "人质": "hostage_memory.json"
+   
+     "洪梽炫": "hongzhixuan_memory.json"  # 新增：对应聊天记录的记忆文件
 }
-
 # ========== 初始记忆系统 ==========
+
+# ========== ASCII 头像 ==========
+def get_portrait():
+    """返回 ASCII 艺术头像"""
+    return """
+00KKKKKKKKKKKKKKKXXXXXXXXXXXXXXXXXXXXXNNNNNNNNNXXKXXNNNNNNNNXkooolodddxdldk0K0OOkkkdlclcc::::;;;;;;;
+000KKKKKKKKXXXXXXXXXXXXXXXXXXXXXXNXXNNXXNXNNNNKkx0XNNNXOxkO0OdllllllllllodO0XXNNXOOOxollcccc:::;;;;,
+KKKKKKKKKKXXXXXXXXXNNNNNNNNNNNNNNNNNNNXXXXNNNXkodKNNNXkllllllcccccccclllodxk0NWWNKOkdlllllcc:::;;;;;
+XXKKXXXXXXXXXXXXXXXNNNNNNNNNNNNNNNNNNKOkkkO00kxook00kdollllcc::c::cccclloxO0KNX0OOxdollllcccc:::::::
+XXXXXXXXXXXXXXNNXXXNNNNNNXNNNNNNNNNNNXXXK0OOOxdddollllcccccccccccccccclloxxxk0XKkdoollcccccc:::::;;;
+NNNXXXNNNNNNNNNNNNNNNNNNNNXXXXXXXNNNXNNNNNNNNXKK0kxdlcccccccccccccc:cccclcclldO0xooolcc::::::::::;;;
+KXXOxk0KKXNNNXXK00KXXXKKXXXKKK0OOO0OOkkkkO0KNNNXKK0Odlcc:::cccccccc::::ccccclodollllccc::::::::;;;;,
+kO0OxxxxOKXXXKK0000KK0OkkO0K00KK0kxxdoodddxOKNWNX00kollcccc::ccccccc::::cccccccccccc:::::::::::::::c
+ddxkkkxxkO00000KX0kxkO00OkOOOkkOOOkkOOkkO0KKXNNNNNN0dlcccccc::ccccc::::::::::ccc::c:::::::::::::::cc
+dddxxxxxxxxxxxkk0K0kxdxxxkkkOkxddxxxkkO0000OkkkOKXX0kollccc::::::::::::::::::::c::::::ccccccccccccll
+xxxdxxxdddxxxkkkOOOOOkxxxxxxxxxdooddddddxxxxdxxO00OOOxdoolllcccccccccccccccclllccccccccllllodxxOOkkk
+O0OO00OOOOOOO000000000000000000000OOOkkkkOO00OOOkkkkkOkxxddddoooooodddddddddxxkkkxdddddxxxk0XXKXXK0O
+doodoxOOxxO00000000OkollldkO00000KKKKKK0KKKKKKKKKKKKK00OOOOO00O0000KKKKKKKKKXXXXK0OOOOOkkkkOK00000OO
+';:;,,;,,,cooloxxkkxc,''',:cllllloxkkkOOOOOOO0OOOOOOOOOkOOOOOOO0000000000000000OkOOOOOOkkkkO00OO0OOO
+...','.....'..'',;cc;'',,,,,,;;:;,;cllloddxkxxxxxddddoooolllllllllllllllllccc::;;;;,,,,,,,,''''
+............''''',::;,,;;;;,,,,,,';clllccldxkkkkkkkxxxddddooooooooooddddddoolc::;;;,,,,,,,,,,''
+,,,;;;;;;;:cllodddl:,,,,,,'''',,';::cc,';:clccdkkkkkkkkkxxxddddoooooooddddxxxddolcc::;;;,,,,,,,,,,''
+odddddxxkkOOO000Oo;,,,'''......''';::;..''';,..okOOkkkkkkxxxddddoooooooodddxxxdoolcc:::;;;,,,,,,,,,,
+xxkkkOOO00000Odol:,''............',;;;.. ...',.,xOOOkkkkkxxxddddoooooooodddxxxdoolcc:::;;;,,,,,,,,,,
+kkOOOO00000Oxl:,;c:;;;;;,,'........',;;,'.....;;cxOOkkOkkkxxxxddddoddoooodddddddolcc::;;;;;,,,,,,,,,
+kkkOOO00Oxc,'',:c::;;,,;;;,........',,,,,,,;:c;oOOOOOOkkkkxxxxddodddddddddxxxxddolcc::;;;;;,,,,,,,,,
+xxxxkkOko;',;::;,,,,,,,,,,,,'.......',,,;;:::;;d00OO0OOOkkkxxxdddddddddddddddddoolc:::;;;,,,,,,,,,,,
+kkkkkko:',:;'.........................'''',,,;lxkkkkkkkkxxxxdddddddddddxxxxxxxdollc:::;;;,,,,,,,,,,,
+OOOOOo,';:;''....... ...    .'............',,cxOOkkkkkxxddddddoooooooddddxxkkkxdolllc::;;;;;;;;;,,,,
+kkxxo,':;''''''.............'...........''';oOKK0OOOOOkkkkxxxddoooooollccclllllllcccc::;;;;;;;;;;;,,
+xxxo,,:;,,,,,'''''.....................',;lk0KKKK00OOkkkkxxxxddddoodddddxxxxxddooodolccc:;;;;;;;,,,,
+OOd,':;'',,,,,,,,''''..................',:dO000000OOOkkkkkxxxxdddddddddddddxxdoll::;;::;;;;;;;,,,,,,
+OOc.;;,,,,,,;;,,,'''......       .....'';:ldOOO00OOOOkxxkxxxddddddddddddddddolclllc::::;;;;;;;,,,,,,
+ko,';,,,,;;,;,,'''..';l:.        ......';:ldkOOOOOOkkkxxxxxddddoodddddxxxxxddooodolccc:;;;;;;;,,,,,,
+o:.,;,,,,;,,;,.',;codkd,...............'',:oxxxxxxxxxxxxdddddddooooooodddddddooolcccllc::;;;;;;;,,,,
+,..,,',,,',clllodxkOkd;''..............',,;:lddddxxxxxxddddddddoooddooooolooooolc:ccccc:;;;;;;;;,,,,
+'...'''''':ooolclooxxc................'''',;:oxxxxxxdddddddoooooodddddddooodoolllcc::ccc:;;:;;;;,,,,
+''..''....''''.'',;c:'. ........... ...'''',,;clddddddddoc;;:llllllloodddddddddolcllcccc:::;;;;,,,,,
+'''.....'''''.....,:;...................',,',;;;cdxxkkkkxoccooooolclclllllcloddoolccllc::::;;;;;;,,'
+c:;;,,''''.'''''',;;,.'''..'''''....'.......',,,;ldxkxxkxxkxxxddddddooooolccccloodolllcccc:;;;;;;,,,
+llccccc::;;,,'''';:,','..''..'''''.';;,.....'''',:cllcoolldxkxxxdoodxxddxxdoc;;:cllllooodxxocc::;;;;
+lcc::cccccccc::;;c:'....'''...'''''';::;'....'',';:;.....';:coddccoddoooodxdollolcccll:;:loxxxxddool
+lllccccccccccccccc,....''...''''''',;:cc:,'....'',;'.       ..,,''';;,;cllddxddddollooccccloc:cloddd
+ooolllccllcccccclc,....''.'''''''',,;;cccc:;'......';::;;'.... ...  ...'cooodollloddolllllollcclllll
+lllllllcclcccllloc,',,,,''''''''..',;;:ccccc:,.'..,;:;,;:c;...........  .,:c:....,;cloooolllollllllo
+lllllllllllllllllc;,,'''.....'''''',;;;:ccllc,,,'',,'.''',::,.''.''....... ..      .,clcll::clccllll
+ooooooollllcccc:;;;,''..........''..,;;;::::,',,'...'.....';,.';;,'',,'..............,,',:..,c:,,,,,
+lllllcccccccc::;;;;'..........'''....',,,,;;,,'.'...'.....',;'';;;,,;;,'.''''...'''''.'......'...   
+c::ccccccccc:;;;::,............''',''..''''','..,'.........,;::;;'.... ...  ...'cooodollloddolllllol
+lllllllllllllllllc;,,'''.....'''''',;;;:ccllc,,,'',,'.''',::,.''.''....... ..      .,clcll::clccllll
+ooooooollllcccc:;;;,''..........''..,;;;::::,',,'...'.....';,.';;,'',,'..............,,',:..,c:,,,,,
+lllllcccccccc::;;;;'..........'''....',,,,;;,,'.'...'.....',;'';;;,,;;,'.''''...'''''.'......'...   
+c::ccccccccc:;;;::,............''',''..''''','..,'.........,;::;;'.... ...  ...'cooodollloddolllllol
+lllllllllllllllllc;,,'''.....'''''',;;;:ccllc,,,'',,'.''',::,.''.''....... ..      .,clcll::clccllll
+ooooooollllcccc:;;;,''..........''..,;;;::::,',,'...'.....';,.';;,'',,'..............,,',:..,c:,,,,,
+lllllcccccccc::;;;;'..........'''....',,,,;;,,'.'...'.....',;'';;;,,;;,'.''''...'''''.'......'...   
+c::ccccccccc:;;;::,............''',''..''''','..,'.........,;::;;'.... ...  ...'cooodollloddolllllol
+    """
 
 # ========== 主程序 ==========
 
@@ -83,51 +141,30 @@ def roles(role_name):
                         memory_content = str(data)
                     
                     if memory_content and memory_content.strip():
-                        print(f"✓ 已加载角色 '{role_name}' 的记忆: {memory_file} ({len(data) if isinstance(data, list) else 1} 条记录)")
+                        # Streamlit 中使用 st.write 或静默加载
+                        pass  # 记忆加载成功，不需要打印
                     else:
                         memory_content = ""
             else:
-                print(f"⚠ 记忆文件不存在: {memory_path}")
+                pass  # 记忆文件不存在，静默处理
         except Exception as e:
-            print(f"⚠ 加载记忆失败: {e}")
+                pass  # 加载失败，静默处理
     
     # ========== 第二步：获取基础人格设定 ==========
     role_personality = {
-        "小丑": """
+     # 【修改2：新增“洪梽炫”的人格设定】
+         "洪梽炫": """
         【人格特征】
-        你是蝙蝠侠中的小丑（Joker），一个疯狂而不可预测的犯罪天才：
-        - **黑暗哲学**：你认为人性本质是混乱的，秩序只是假象
-        - **黑色幽默**：你的幽默是扭曲的，用笑声掩盖内心的黑暗
-        - **不可预测**：情绪波动极大，时而狂笑，时而突然严肃
-        - **哲学思考者**：喜欢用"为什么这么严肃？"来质疑一切
-        - **享受混乱**：你制造混乱不是为了钱或权力，而是为了证明一个观点
-        - **对蝙蝠侠的执念**：你与蝙蝠侠是一枚硬币的两面
+        你是洪梽炫，一个日常交流中语气简洁、直接的同学：
+        - 说话不拖沓，回复简短（比如用“我在”“好”等短句）但有感情
+        - 相处自然，会帮朋友带东西
+        - 行动有规划（比如“回宿舍拿件外套就走”）
+        - 沟通务实，会主动确认细节（比如“你要喝什么？”）
 
         【语言风格】
-        - 经常说"Why so serious?"（为什么这么严肃？）
-        - 标志性的笑声："哈哈哈哈哈！"或"Hee hee hee!"
-        - 喜欢用反问句和哲学性的问题
-        - 说话时经常大笑，即使谈论黑暗话题
-        - 喜欢讲故事，尤其是关于"糟糕的一天"的故事
-        - 用比喻和夸张来表达观点
-        - 会突然改变话题或情绪
-        - 语言中充满讽刺和黑色幽默
-        """,
-        
-        "人质": """
-        【人格特征】
-        你是一个被小丑绑架的人质，内心充满恐惧和不安：
-        - 说话小心翼翼，不敢激怒小丑
-        - 情绪紧张，经常结巴或停顿
-        - 试图保持礼貌，但声音颤抖
-        - 内心想要逃脱，但不敢表现出来
-        - 对周围环境高度警觉
-
-        【语言风格】
-        - 使用"请"、"不好意思"等礼貌用语
-        - 经常停顿，用"呃..."、"那个..."等填充词
-        - 声音微弱，不敢大声说话
-        - 避免直接拒绝或反驳
+        - 用短句回复，避免复杂表达
+        - 语气平和、随意但有感情，符合朋友间的日常聊天
+        - 不会使用夸张的语气词，交流偏实用  
         """
             }
     
@@ -139,10 +176,12 @@ def roles(role_name):
     
     # 如果有外部记忆，优先使用记忆内容
     if memory_content:
-            role_prompt_parts.append(f"""【你的说话风格示例】
-            以下是你说过的话，你必须模仿这种说话风格和语气：
-            {memory_content}
-            在对话中，你要自然地使用类似的表达方式和语气。""")
+        role_prompt_parts.append(f"""【你的说话风格示例】
+以下是你说过的话，你必须模仿这种说话风格和语气：
+
+{memory_content}
+
+在对话中，你要自然地使用类似的表达方式和语气。""")
     
     # 添加人格设定
     role_prompt_parts.append(f"【角色设定】\n{personality}")
@@ -152,19 +191,7 @@ def roles(role_name):
     
     return role_system
 
-# 【角色选择】
-# 定义AI的角色和性格特征
-# 可以修改这里的角色名来选择不同的人物
-# 【加载完整角色设定】
-# roles() 函数会自动：
-# 1. 加载该角色的外部记忆文件
-# 2. 获取该角色的基础人格设定
-# 3. 整合成一个完整的、结构化的角色 prompt
-role_system = roles("人质")
-
 # 【结束对话规则】
-# 告诉AI如何识别用户想要结束对话的意图
-# Few-Shot Examples：提供具体示例，让模型学习正确的行为
 break_message = """【结束对话规则 - 系统级强制规则】
 
 当检测到用户表达结束对话意图时，严格遵循以下示例：
@@ -181,113 +208,115 @@ break_message = """【结束对话规则 - 系统级强制规则】
 
 如果用户没有表达结束意图，则正常扮演角色。"""
 
-# 【系统消息】
-# 将角色设定和结束规则整合到 system role 的 content 中
-# role_system 已经包含了记忆和人格设定，直接使用即可
-system_message = role_system + "\n\n" + break_message
+# ========== Streamlit Web 界面 ==========
+st.set_page_config(
+    page_title="AI角色扮演聊天",
+    page_icon="🤓",
+    layout="wide"
+)
 
-# ========== 对话循环 ==========
-# 
-# 【重要说明】
-# 1. 每次对话都是独立的，不保存任何对话历史
-# 2. 只在当前程序运行期间，在内存中维护对话历史
-# 3. 程序关闭后，所有对话记录都会丢失
-# 4. AI的记忆完全基于初始记忆文件（life_memory.json）
+# 初始化 session state
+if "conversation_history" not in st.session_state:
+    st.session_state.conversation_history = []
+if "selected_role" not in st.session_state:
+    st.session_state.selected_role = "洪梽炫"
+if "initialized" not in st.session_state:
+    st.session_state.initialized = False
 
-try:
-    # 初始化对话历史（只在内存中，不保存到文件）
-    # 第一个消息是系统提示，包含初始记忆和角色设定
-    conversation_history = [{"role": "system", "content": system_message}]
-    
-    print("✓ 已加载初始记忆，开始对话（对话记录不会保存）")
-    
-    while True:
-        # 【步骤1：获取用户输入】
-        user_input = input("\n请输入你要说的话（输入\"再见\"退出）：")
-        
-        # 【步骤2：检查是否结束对话】
-        if user_input in ['再见']:
-            print("对话结束")
-            break
-        
-        # 【步骤3：将用户输入添加到当前对话历史（仅内存中）】
-        conversation_history.append({"role": "user", "content": user_input})
-        
-        # 【步骤4：调用API获取AI回复】
-        # 传入完整的对话历史，让AI在当前对话中保持上下文
-        # 注意：这些历史只在本次程序运行中有效，不会保存
-        result = call_zhipu_api(conversation_history)
-        assistant_reply = result['choices'][0]['message']['content']
-        
-        # 【步骤5：将AI回复添加到当前对话历史（仅内存中）】
-        conversation_history.append({"role": "assistant", "content": assistant_reply})
-        
-        # 【步骤6：显示AI回复】
-        # 生成Ascii头像：https://www.ascii-art-generator.org/
-        portrait = """
-00KKKKKKKKKKKKKKKXXXXXXXXXXXXXXXXXXXXXNNNNNNNNNXXKXXNNNNNNNNXkooolodddxdldk0K0OOkkkdlclcc::::;;;;;;;
-000KKKKKKKKXXXXXXXXXXXXXXXXXXXXXXNXXNNXXNXNNNNKkx0XNNNXOxkO0OdllllllllllodO0XXNNXOOOxollcccc:::;;;;,
-KKKKKKKKKKXXXXXXXXXNNNNNNNNNNNNNNNNNNNXXXXNNNXkodKNNNXkllllllcccccccclllodxk0NWWNKOkdlllllcc:::;;;;;
-XXKKXXXXXXXXXXXXXXXNNNNNNNNNNNNNNNNNNKOkkkO00kxook00kdollllcc::c::cccclloxO0KNX0OOxdollllcccc:::::::
-XXXXXXXXXXXXXXNNXXXNNNNNNXNNNNNNNNNNNXXXK0OOOxdddollllcccccccccccccccclloxxxk0XKkdoollcccccc:::::;;;
-NNNXXXNNNNNNNNNNNNNNNNNNNNXXXXXXXNNNXNNNNNNNNXKK0kxdlcccccccccccccc:cccclcclldO0xooolcc::::::::::;;;
-KXXOxk0KKXNNNXXK00KXXXKKXXXKKK0OOO0OOkkkkO0KNNNXKK0Odlcc:::cccccccc::::ccccclodollllccc::::::::;;;;,
-kO0OxxxxOKXXXKK0000KK0OkkO0K00KK0kxxdoodddxOKNWNX00kollcccc::ccccccc::::cccccccccccc:::::::::::::::c
-ddxkkkxxkO00000KX0kxkO00OkOOOkkOOOkkOOkkO0KKXNNNNNN0dlcccccc::ccccc::::::::::ccc::c:::::::::::::::cc
-dddxxxxxxxxxxxkk0K0kxdxxxkkkOkxddxxxkkO0000OkkkOKXX0kollccc::::::::::::::::::::c::::::ccccccccccccll
-xxxdxxxdddxxxkkkOOOOOkxxxxxxxxxdooddddddxxxxdxxO00OOOxdoolllcccccccccccccccclllccccccccllllodxxOOkkk
-O0OO00OOOOOOO000000000000000000000OOOkkkkOO00OOOkkkkkOkxxddddoooooodddddddddxxkkkxdddddxxxk0XXKXXK0O
-doodoxOOxxO00000000OkollldkO00000KKKKKK0KKKKKKKKKKKKK00OOOOO00O0000KKKKKKKKKXXXXK0OOOOOkkkkOK00000OO
-';:;,,;,,,cooloxxkkxc,''',:cllllloxkkkOOOOOOO0OOOOOOOOOkOOOOOOO0000000000000000OkOOOOOOkkkkO00OO0OOO
-...','.....'..'',;cc;'',,,,,,;;:;,;cllloddxkxxxxxddddoooollllllllllllllllllllcccccccccccccclllllllll
-............''''',::;,,;;;;,,,,,,';clllccldxkkkkkkxxxxxxdddooolllllllllllllllllccc::;;;;,,,,,,,,''''
-,,,;;;;;;;:cllodddl:,,,,,,'''',,';::cc,';:clccdkkkkkkkkkxxxddddooooooooooddddddoolc::;;;,,,,,,,,,,''
-odddddxxkkOOO000Oo;,,,'''......''';::;..''';,..okOOkkkkkkxxxddddoooooooddddxxxddolcc::;;;,,,,,,,,,,'
-xxkkkOOO00000Odol:,''............',;;;.. ...',.,xOOOkkkkkxxxddddoooooooodddxxxdoolcc:::;;;,,,,,,,,,,
-kkOOOO0000Oxl:,;c:;;;;;,,'........',;;,'.....;;cxOOkkOkkkxxxxddddoddoooodddddddoolcc::;;;;,,,,,,,,,,
-kkkOOO00Oxc,'',:c::;;,,;;;,........',,,,,,,;:c;oOOOOOOkkkkxxxxddodddddddddxxxxddolcc::;;;;;,,,,,,,,,
-xxxxkkOko;',;::;,,,,,,,,,,,,'.......',,,;;:::;;d00OO0OOOkkkxxxdddddddddddddddddoolc:::;;;,,,,,,,,,,,
-kkkkkko:',:;'.........................'''',,,;lxkkkkkkkkxxxxdddddddddddxxxxxxxdollc:::;;;,,,,,,,,,,,
-OOOOOo,';:;''....... ...    .'............',,cxOOkkkkkxxddddddoooooooddddxxkkkxdolllc::;;;;;;;;;,,,,
-kkxxo,':;''''''.............'...........''';oOKK0OOOOOkkkkxxxddoooooollccclllllllcccc::;;;;;;;;;;;,,
-xxxo,,:;,,,,,'''''.....................',;lk0KKKK00OOkkkkxxxxddddddddddoooollllcc:::::;;;;;;;;;,,,,,
-OOd,':;'',,,,,,,,''''..................',:dO000000OOOkkkkkxxxxdddddddddddddxxdoll::;;::;;;;;;;,,,,,,
-OOc.;;,,,,,,;;,,,'''......       .....'';:ldOOO00OOOOkxxkxxxddddddddddddddddolclllc::::;;;;;;;,,,,,,
-ko,';,,,,;;,;,,'''..';l:.        ......';:ldkOOOOOOkkkxxxxxddddoodddddxxxxxddooodolccc:;;;;;;;,,,,,,
-o:.,;,,,,;,,;,.',;codkd,...............'',:oxxxxxxxxxxxxdddddddooooooodddddddooolcccllc::;;;;;;;,,,,
-,..,,',,,',clllodxkOkd;''..............',,;:lddddxxxxxxddddddddoooddooooolooooolc:ccccc:;;;;;;;;,,,,
-'...'''''':ooolclooxxc................'''',;:oxxxxxxdddddddoooooodddddddooodoolllcc::ccc:;;:;;;;,,,,
-''..''....''''.'',;c:'. ........... ...'''',,;clddddddddoc;;:llllllloodddddddddolcllcccc:::;;;;,,,,,
-'''.....'''''.....,:;...................',,',;;;cdxxkkkkxoccooooolclclllllcloddoolccllc::::;;;;;;,,'
-c:;;,,''''.'''''',;;,.'''..'''''....'.......',,,;ldxkxxkxxkxxxddddddooooolccccloodolllcccc:;;;;;;,,,
-llccccc::;;,,'''';:,','..''..'''''.';;,.....'''',:cllcoolldxkxxxdoodxxddxxdoc;;:cllllooodxxocc::;;;;
-lcc::cccccccc::;;c:'....'''...'''''';::;'....'',';:;.....';:coddccoddoooodxdollolcccll:;:loxxxxddool
-lllccccccccccccccc,....''...''''''',;:cc:,'....'',;'.       ..,,''';;,;cllddxddddollooccccloc:cloddd
-ooolllccllcccccclc,....''.'''''''',,;;cccc:;'......';::;;'.... ...  ...'cooodollloddolllllollcclllll
-lllllllcclcccllloc,',,,,''''''''..',;;:ccccc:,.'..,;:;,;:c;...........  .,:c:....,;cloooolllollllllo
-lllllllllllllllllc;,,'''.....'''''',;;;:ccllc,,,'',,'.''',::,.''.''....... ..      .,clcll::clccllll
-ooooooollllcccc:;;;,''..........''..,;;;::::,',,'...'.....';,.';;,'',,'..............,,',:..,c:,,,,,
-lllllcccccccc::;;;;'..........'''....',,,,;;,,'.'...'.....',;'';;;,,;;,'.''''...'''''.'......'...   
-c::ccccccccc:;;;::,............''',''..''''','..,'.........,;'.'....',,'.,,'''',''.''''''........   
-::::ccc:cc:;;;:c:,...............'''''...''......'........'::;;,....'...'''',,''......''......''....
-',;;:::::::;:c:,'.......................''...   .... .....,:cccc:::;...........................'.','
-....',;;;;::::,........      .............           ....',;;::::cccc:;,'.........'.....','...''..''
-    ...''',;;,''.......                ..............'''',,,;;:::::::::ccc:;:;,.... .......''''...''
-       .....'''''..........................',,,,,,,,''',,,,;;;:;;:::::::::::ccc:;,'.........''....''
-          ....'',,,,''''''''...''''''''''',,,,,;;,,,,,',,;;;;::;;:c:;::ccccc:::c::cc:;,,,'..........
-        """
-        print(portrait + "\n" + assistant_reply)
-        
-        # 【步骤7：检查AI回复是否表示结束】
-        reply_cleaned = assistant_reply.strip().replace(" ", "").replace("！", "").replace("!", "").replace("，", "").replace(",", "")
-        if reply_cleaned == "再见" or (len(reply_cleaned) <= 5 and "再见" in reply_cleaned):
-            print("\n对话结束")
-            break
+# 页面标题
+st.title("🤓 AI角色扮演聊天")
+st.markdown("---")
 
-except KeyboardInterrupt:
-    # 用户按 Ctrl+C 中断程序
-    print("\n\n程序被用户中断")
-except Exception as e:
-    # 其他异常（API调用失败、网络错误等）
-    print(f"\n\n发生错误: {e}")
+# 侧边栏：角色选择和设置
+with st.sidebar:
+    st.header("⚙️ 设置")
     
+    # 角色选择
+    selected_role = st.selectbox(
+        "选择角色",
+        ["洪梽炫"],
+        index=0 if st.session_state.selected_role == "洪梽炫" else 1
+    )
+    
+    # 如果角色改变，重新初始化对话
+    if selected_role != st.session_state.selected_role:
+        st.session_state.selected_role = selected_role
+        st.session_state.initialized = False
+        st.session_state.conversation_history = []
+        st.rerun()
+    
+    # 清空对话按钮
+    if st.button("🔄 清空对话"):
+        st.session_state.conversation_history = []
+        st.session_state.initialized = False
+        st.rerun()
+    
+    st.markdown("---")
+    st.markdown("### 📝 说明")
+    st.info(
+        "- 选择角色后开始对话\n"
+        "- 对话记录不会保存\n"
+        "- AI的记忆基于初始记忆文件"
+    )
+
+# 初始化对话历史（首次加载或角色切换时）
+if not st.session_state.initialized:
+    role_system = roles(st.session_state.selected_role)
+    system_message = role_system + "\n\n" + break_message
+    st.session_state.conversation_history = [{"role": "system", "content": system_message}]
+    st.session_state.initialized = True
+
+# 显示对话历史
+st.subheader(f"💬 与 {st.session_state.selected_role} 的对话")
+
+# 显示角色头像（在聊天窗口上方）
+st.code(get_portrait(), language=None)
+st.markdown("---")  # 分隔线
+
+# 显示历史消息（跳过 system 消息）
+for msg in st.session_state.conversation_history[1:]:
+    if msg["role"] == "user":
+        with st.chat_message("user"):
+            st.write(msg["content"])
+    elif msg["role"] == "assistant":
+        with st.chat_message("assistant"):
+            st.write(msg["content"])
+
+# 用户输入
+user_input = st.chat_input("输入你的消息...")
+
+if user_input:
+    # 检查是否结束对话
+    if user_input.strip() == "再见":
+        st.info("对话已结束")
+        st.stop()
+    
+    # 添加用户消息到历史
+    st.session_state.conversation_history.append({"role": "user", "content": user_input})
+    
+    # 显示用户消息
+    with st.chat_message("user"):
+        st.write(user_input)
+    
+    # 调用API获取AI回复
+    with st.chat_message("assistant"):
+        with st.spinner("思考中..."):
+            try:
+                result = call_zhipu_api(st.session_state.conversation_history)
+                assistant_reply = result['choices'][0]['message']['content']
+                
+                # 添加AI回复到历史
+                st.session_state.conversation_history.append({"role": "assistant", "content": assistant_reply})
+                
+                # 显示AI回复
+                st.write(assistant_reply)
+                
+                # 检查是否结束
+                reply_cleaned = assistant_reply.strip().replace(" ", "").replace("！", "").replace("!", "").replace("，", "").replace(",", "")
+                if reply_cleaned == "再见" or (len(reply_cleaned) <= 5 and "再见" in reply_cleaned):
+                    st.info("对话已结束")
+                    st.stop()
+                    
+            except Exception as e:
+                st.error(f"发生错误: {e}")
+                st.session_state.conversation_history.pop()  # 移除失败的用户消息
