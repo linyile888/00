@@ -210,9 +210,9 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 📝 说明")
     st.info(
-        "- 选择角色后开始对话\n"
-        "- 对话记录不会保存\n"
-        "- AI的记忆基于初始记忆文件"
+        "选择角色后开始对话，对话记录不会保存，AI的记忆基于初始记忆文件，现代别墅客厅\n"
+        "知名设计师，死于沙发，无打斗痕迹，草稿纸“7-3-9”、威士忌杯镇静剂、监控被关、739新品设计，通过提问找出真凶，说出“xxx是凶手”结束游戏\n"
+        "你可以向我提问收集线索（例如：案发当晚你在哪里？你知道7-3-9是什么吗？）\n"
     )
 
 # 初始化对话
@@ -241,7 +241,7 @@ user_input = st.chat_input("输入你的消息...")
 if user_input:
     # 结束对话检测
     if user_input.strip() == "再见":
-        st.info("对话已结束")
+        st.info("\n\n🎉 恭喜你猜中真凶！凶手就是助理林夏！\n\n案件真相：林夏因长期被忽视、设计方案遭否定，担心新品739成功后被边缘化，案发当晚以送文件为由进入别墅，在死者的威士忌中添加了涂改过剂量的助眠药（镇静剂），趁死者昏迷关闭监控试图偷走739设计方案，最终导致死者镇静剂过量死亡。")
         st.stop()
     # 添加用户消息
     st.session_state.conversation_history.append({"role": "user", "content": user_input})
@@ -258,7 +258,7 @@ if user_input:
                 # 检测AI回复是否为结束对话
                 reply_cleaned = assistant_reply.strip().replace(" ", "").replace("！", "").replace("!", "").replace("，", "").replace(",", "")
                 if reply_cleaned == "再见" or (len(reply_cleaned) <= 5 and "再见" in reply_cleaned):
-                    st.info("对话已结束")
+                    st.info("\n\n🎉 恭喜你猜中真凶！凶手就是助理林夏！\n\n案件真相：林夏因长期被忽视、设计方案遭否定，担心新品739成功后被边缘化，案发当晚以送文件为由进入别墅，在死者的威士忌中添加了涂改过剂量的助眠药（镇静剂），趁死者昏迷关闭监控试图偷走739设计方案，最终导致死者镇静剂过量死亡。")
                     st.stop()
             except Exception as e:
                 st.error(f"发生错误: {e}")
