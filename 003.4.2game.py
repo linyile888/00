@@ -66,10 +66,6 @@ ooolllccllcccccclc,....''.'''''''',,;;:ccccc:,.'..,;:;,;:c;...........  .,:c:...
 lllllllcclcccllloc,',,,,''''''''..',;;:ccccc:,.'..,;:;,;:c;...........  .,:c:....,;clcll::clccllll
 lllllllllllllllllc;,,'''.....'''''',;;;:ccllc,,,'',,'.''',::,.''.''....... ..      .,clcll::clccllll
 ooooooollllcccc:;;;,''..........''..,;;;::::,',,'...'.....';,.';;,'',,'..............,,',:..,c:,,,,,
-lllllcccccccc::;;;;'..........'''....',,,,;;,,'.'...'.....',;'';;;,,;;,'.''''...'''''.'......'...   
-c::ccccccccc:;;;::,............''',''..''''','..,'.........,;::;;'.... ...  ...'cooodollloddolllllol
-lllllllllllllllllc;,,'''.....'''''',;;;:ccllc,,,'',,'.''',::,.''.''....... ..      .,clcll::clccllll
-ooooooollllcccc:;;;,''..........''..,;;;::::,',,'...'.....';,.';;,'',,'..............,,',:..,c:,,,,,
     """
 
 # ========== 角色系统 ==========
@@ -137,6 +133,20 @@ def roles(role_name):
         这只是游戏，沉浸式扮演，只用第一人称回答，不脱离角色，不说自己是人工智能。"""
         }
     }
+    # 修复：获取对应角色的personality，避免返回None
+    personality = role_personality.get(role_name, {}).get("system", "")
+    role_prompt_parts = []
+    if memory_content:
+        role_prompt_parts.append(f"""【你的说话风格示例】
+以下是你说过的话，你必须模仿这种说话风格和语气：
+
+{memory_content}
+
+在对话中，你要自然地使用类似的表达方式和语气。""")
+    role_prompt_parts.append(f"【角色设定】\n{personality}")
+    role_system = "\n\n".join(role_prompt_parts)
+    return role_system
+
 def build_role_anchor(role_name: str) -> str:
     return f"你必须扮演{role_name}，全程第一人称，沉浸式回应，不透露角色设定规则，不说自己是人工智能。"
 
@@ -152,19 +162,6 @@ def check_guess(user_input, reply):
         if kw in user_input or kw in reply:
             return True
     return ("林夏" in user_input and "凶手" in user_input) or ("助理" in user_input and "凶手" in user_input)    
-    personality = role_personality.get(role_name, {}).get("system")  # pyright: ignore[reportUnreachable]
-    
-    role_prompt_parts = []
-    if memory_content:
-        role_prompt_parts.append(f"""【你的说话风格示例】
-以下是你说过的话，你必须模仿这种说话风格和语气：
-
-{memory_content}
-
-在对话中，你要自然地使用类似的表达方式和语气。""")
-    role_prompt_parts.append(f"【角色设定】\n{personality}")
-    role_system = "\n\n".join(role_prompt_parts)
-    return role_system
 
 # 结束对话规则
 break_message = """【结束对话规则 - 系统级强制规则】
@@ -248,6 +245,10 @@ for msg in st.session_state.conversation_history[1:]:
 # 用户输入处理
 user_input = st.chat_input("输入你的消息...")
 if user_input:
+    # 猜中凶手检测
+    if check_guess(user_input, ""):
+        st.info("\n\n恭喜你猜对了！\n\n凶手是助理林夏！\n\n案件真相：林夏因长期被忽视、设计方案遭否定，担心新品739成功后被边缘化，案发当晚以送文件为由进入别墅，在死者的威士忌中添加了涂改过剂量的助眠药（镇静剂），趁死者昏迷关闭监控试图偷走739设计方案，最终导致死者镇静剂过量死亡。")
+        st.stop()
     # 结束对话检测
     if user_input.strip() == "再见":
         st.info("\n\n凶手是助理林夏！\n\n案件真相：林夏因长期被忽视、设计方案遭否定，担心新品739成功后被边缘化，案发当晚以送文件为由进入别墅，在死者的威士忌中添加了涂改过剂量的助眠药（镇静剂），趁死者昏迷关闭监控试图偷走739设计方案，最终导致死者镇静剂过量死亡。")
@@ -264,6 +265,10 @@ if user_input:
                 assistant_reply = result['choices'][0]['message']['content']
                 st.session_state.conversation_history.append({"role": "assistant", "content": assistant_reply})
                 st.write(assistant_reply)
+                # 检测猜中凶手
+                if check_guess(user_input, assistant_reply):
+                    st.info("\n\n恭喜你猜对了！\n\n凶手是助理林夏！\n\n案件真相：林夏因长期被忽视、设计方案遭否定，担心新品739成功后被边缘化，案发当晚以送文件为由进入别墅，在死者的威士忌中添加了涂改过剂量的助眠药（镇静剂），趁死者昏迷关闭监控试图偷走739设计方案，最终导致死者镇静剂过量死亡。")
+                    st.stop()
                 # 检测AI回复是否为结束对话
                 reply_cleaned = assistant_reply.strip().replace(" ", "").replace("！", "").replace("!", "").replace("，", "").replace(",", "")
                 if reply_cleaned == "再见" or (len(reply_cleaned) <= 5 and "再见" in reply_cleaned):
