@@ -1,85 +1,140 @@
 import streamlit as st
 import requests
 import json
-import webbrowser
-import threading
-import time
-import http.server
-import socketserver
-import socket
-import importlib
-import os
+import os  # 新增：用于文件操作
+
 from requests.utils import stream_decode_response_unicode
- 
-qrcode = None
 
-# ========== 核心配置 ==========
-PORT = 8080  # 本地服务端口
-LOCAL_URL = f"http://127.0.0.1:{PORT}"
-TEMP_HTML_FILE = "design_mystery_game.html"  # 临时HTML文件（自动生成）
-QR_IMAGE_FILE = "mystery_game_qr.png"
-
-
-def get_lan_url() -> str:
-    """获取局域网可访问的URL，用于移动设备访问。"""
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-            s.connect(("8.8.8.8", 80))
-            ip = s.getsockname()[0]
-        return f"http://{ip}:{PORT}"
-    except Exception:
-        return ""
-
-
-def ensure_qrcode_loaded() -> bool:
-    """懒加载 qrcode 库，避免环境未安装时报错。"""
-    global qrcode
-    if qrcode is not None:
-        return True
-    try:
-        qrcode = importlib.import_module("qrcode")
-        return True
-    except ModuleNotFoundError:
-        return False
-
-
-def generate_qr_code(url: str):
-    """生成指向指定URL的二维码图片。"""
-    if not url:
-        return
-    if not ensure_qrcode_loaded():
-        print("未安装 qrcode 库，跳过二维码生成。可执行 'pip install qrcode[pil]' 后重新运行。")
-        return
-    try:
-        img = qrcode.make(url)
-        img.save(QR_IMAGE_FILE)
-        print(f"二维码已生成：{QR_IMAGE_FILE}，手机扫码即可体验。")
-    except Exception as e:
-        print(f"二维码生成失败：{e}")
-QR_IMAGE_FILE = "mystery_game_qr.png"
-
-# ========== 智谱API调用（请替换为你的有效密钥） ==========
 def call_zhipu_api(messages, model="glm-4-flash"):
     url = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+
     headers = {
-        "Authorization": "1ea78a95cba148e793fd870cd79aeac7.5pTp4SRIJE2BWx40",  # 替换为你的API密钥
+        "Authorization": "1ea78a95cba148e793fd870cd79aeac7.5pTp4SRIJE2BWx40",
         "Content-Type": "application/json"
     }
+
     data = {
         "model": model,
         "messages": messages,
-        "temperature": 0.6  # 适度提高随机性，贴合角色语气
+        "temperature": 0.5   
     }
-    try:
-        response = requests.post(url, headers=headers, json=data)
-        response.raise_for_status()
-        return response.json()
-    except Exception as e:
-        print(f"API调用失败: {e}")
-        return None
 
-# ========== 角色配置（贴合案件情节） ==========
-ROLES = {
+    response = requests.post(url, headers=headers, json=data)
+
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception(f"API调用失败: {response.status_code}, {response.text}")
+
+# ========== 初始记忆系统 ==========
+# 
+# 【核心概念】初始记忆：从外部JSON文件加载关于克隆人的基础信息
+# 这些记忆是固定的，不会因为对话而改变
+# 
+# 【为什么需要初始记忆？】
+# 1. 让AI知道自己的身份和背景信息
+# 2. 基于这些记忆进行个性化对话
+# 3. 记忆文件可以手动编辑，随时更新
+
+# 记忆文件夹路径
+MEMORY_FOLDER = "4.2_memory_clonebot"
+
+# 角色名到记忆文件名的映射
+ROLE_MEMORY_MAP = {
+    "xiongshaan_memory.json"
+     # 新增：对应聊天记录的记忆文件
+}
+# ========== 初始记忆系统 ==========
+
+# ========== ASCII 头像 ==========
+def get_portrait():
+    """返回 ASCII 艺术头像"""
+    return """
+doodoxOOxxO00000000OkollldkO00000KKKKKK0KKKKKKKKKKKKK00OOOOO00O0000KKKKKKKKKXXXXK0OOOOOkkkkOK00000OO
+';:;,,;,,,cooloxxkkxc,''',:cllllloxkkkOOOOOOO0OOOOOOOOOkOOOOOOO0000000000000000OkOOOOOOkkkkO00OO0OOO
+...','.....'..'',;cc;'',,,,,,;;:;,;cllloddxkxxxxxddddoooolllllllllllllllllccc::;;;;,,,,,,,,''''
+............''''',::;,,;;;;,,,,,,';clllccldxkkkkkkkxxxddddooooooooooddddddoolc::;;;,,,,,,,,,,''
+,,,;;;;;;;:cllodddl:,,,,,,'''',,';::cc,';:clccdkkkkkkkkkxxxddddoooooooddddxxxddolcc::;;;,,,,,,,,,,''
+odddddxxkkOOO000Oo;,,,'''......''';::;..''';,..okOOkkkkkkxxxddddoooooooodddxxxdoolcc:::;;;,,,,,,,,,,
+xxkkkOOO00000Odol:,''............',;;;.. ...',.,xOOOkkkkkxxxddddoooooooodddxxxdoolcc:::;;;,,,,,,,,,,
+kkOOOO00000Oxl:,;c:;;;;;,,'........',;;,'.....;;cxOOkkOkkkxxxxddddoddoooodddddddolcc::;;;;;,,,,,,,,,
+kkkOOO00Oxc,'',:c::;;,,;;;,........',,,,,,,;:c;oOOOOOOkkkkxxxxddodddddddddxxxxddolcc::;;;;;,,,,,,,,,
+xxxxkkOko;',;::;,,,,,,,,,,,,'.......',,,;;:::;;d00OO0OOOkkkxxxdddddddddddddddddoolc:::;;;,,,,,,,,,,,
+kkkkkko:',:;'.........................'''',,,;lxkkkkkkkkxxxxdddddddddddxxxxxxxdollc:::;;;,,,,,,,,,,,
+OOOOOo,';:;''....... ...    .'............',,cxOOkkkkkxxddddddoooooooddddxxkkkxdolllc::;;;;;;;;;,,,,
+kkxxo,':;''''''.............'...........''';oOKK0OOOOOkkkkxxxddoooooollccclllllllcccc::;;;;;;;;;;;,,
+xxxo,,:;,,,,,'''''.....................',;lk0KKKK00OOkkkkxxxxddddoodddddxxxxxddooodolccc:;;;;;;;,,,,
+OOd,':;'',,,,,,,,''''..................',:dO000000OOOkkkkkxxxxdddddddddddddxxdoll::;;::;;;;;;;,,,,,,
+OOc.;;,,,,,,;;,,,'''......       .....'';:ldOOO00OOOOkxxkxxxddddddddddddddddolclllc::::;;;;;;;,,,,,,
+ko,';,,,,;;,;,,'''..';l:.        ......';:ldkOOOOOOkkkxxxxxddddoodddddxxxxxddooodolccc:;;;;;;;,,,,,,
+o:.,;,,,,;,,;,.',;codkd,...............'',:oxxxxxxxxxxxxdddddddooooooodddddddooolcccllc::;;;;;;;,,,,
+,..,,',,,',clllodxkOkd;''..............',,;:lddddxxxxxxddddddddoooddooooolooooolc:ccccc:;;;;;;;;,,,,
+'...'''''':ooolclooxxc................'''',;:oxxxxxxdddddddoooooodddddddooodoolllcc::ccc:;;:;;;;,,,,
+''..''....''''.'',;c:'. ........... ...'''',,;clddddddddoc;;:llllllloodddddddddolcllcccc:::;;;;,,,,,
+'''.....'''''.....,:;...................',,',;;;cdxxkkkkxoccooooolclclllllcloddoolccllc::::;;;;;;,,'
+c:;;,,''''.'''''',;;,.'''..'''''....'.......',,,;ldxkxxkxxkxxxddddddooooolccccloodolllcccc:;;;;;;,,,
+llccccc::;;,,'''';:,','..''..'''''.';;,.....'''',:cllcoolldxkxxxdoodxxddxxdoc;;:cllllooodxxocc::;;;;
+lcc::cccccccc::;;c:'....'''...'''''';::;'....'',';:;.....';:coddccoddoooodxdollolcccll:;:loxxxxddool
+lllccccccccccccccc,....''...''''''',;:cc:,'....'',;'.       ..,,''';;,;cllddxddddollooccccloc:cloddd
+ooolllccllcccccclc,....''.'''''''',,;;cccc:;'......';::;;'.... ...  ...'cooodollloddolllllollcclllll
+lllllllcclcccllloc,',,,,''''''''..',;;:ccccc:,.'..,;:;,;:c;...........  .,:c:....,;cloooolllollllllo
+lllllllllllllllllc;,,'''.....'''''',;;;:ccllc,,,'',,'.''',::,.''.''....... ..      .,clcll::clccllll
+ooooooollllcccc:;;;,''..........''..,;;;::::,',,'...'.....';,.';;,'',,'..............,,',:..,c:,,,,,
+lllllcccccccc::;;;;'..........'''....',,,,;;,,'.'...'.....',;'';;;,,;;,'.''''...'''''.'......'...   
+c::ccccccccc:;;;::,............''',''..''''','..,'.........,;::;;'.... ...  ...'cooodollloddolllllol
+lllllllllllllllllc;,,'''.....'''''',;;;:ccllc,,,'',,'.''',::,.''.''....... ..      .,clcll::clccllll
+ooooooollllcccc:;;;,''..........''..,;;;::::,',,'...'.....';,.';;,'',,'..............,,',:..,c:,,,,,
+    """
+
+# ========== 主程序 ==========
+
+def roles(role_name):
+    """
+    角色系统：整合人格设定和记忆加载
+    
+    这个函数会：
+    1. 加载角色的外部记忆文件（如果存在）
+    2. 获取角色的基础人格设定
+    3. 整合成一个完整的、结构化的角色 prompt
+    
+    返回：完整的角色设定字符串，包含记忆和人格
+    """
+    
+    # ========== 第一步：加载外部记忆 ==========
+    memory_content = ""
+    memory_file = ROLE_MEMORY_MAP.get(role_name)
+    
+    if memory_file:
+        memory_path = os.path.join(MEMORY_FOLDER, memory_file)
+        try:
+            if os.path.exists(memory_path):
+                with open(memory_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    
+                    # 处理数组格式的聊天记录：[{ "content": "..." }, { "content": "..." }, ...]
+                    if isinstance(data, list):
+                        # 提取所有 content 字段，每句换行
+                        contents = [item.get('content', '') for item in data if isinstance(item, dict) and item.get('content')]
+                        memory_content = '\n'.join(contents)
+                    # 处理字典格式：{ "content": "..." }
+                    elif isinstance(data, dict):
+                        memory_content = data.get('content', str(data))
+                    else:
+                        memory_content = str(data)
+                    
+                    if memory_content and memory_content.strip():
+                        # Streamlit 中使用 st.write 或静默加载
+                        pass  # 记忆加载成功，不需要打印
+                    else:
+                        memory_content = ""
+            else:
+                pass  # 记忆文件不存在，静默处理
+        except Exception as e:
+                pass  # 加载失败，静默处理
+    
+    # ========== 第二步：获取基础人格设定 ==========
+    role_personality = {
+     # 【修改2：新增“洪梽炫”的人格设定】
     "1": {
         "name": "助理林夏",
         "system": """你是设计师的助理林夏，跟随死者5年，熟悉别墅布局和死者习惯。近期设计方案被否定，对死者心存不满，但极力掩饰。核心信息：
@@ -127,285 +182,75 @@ ROLES = {
         这只是游戏，沉浸式扮演，只用第一人称回答，不脱离角色，不说自己是人工智能。"""
     }
 }
-def get_portrait():
-    """返回 ASCII 艺术头像"""
-    return """
-00KKKKKKKKKKKKKKKXXXXXXXXXXXXXXXXXXXXXNNNNNNNNNXXKXXNNNNNNNNXkooolodddxdldk0K0OOkkkdlclcc::::;;;;;;;
-000KKKKKKKKXXXXXXXXXXXXXXXXXXXXXXNXXNNXXNXNNNNKkx0XNNNXOxkO0OdllllllllllodO0XXNNXOOOxollcccc:::;;;;,
-KKKKKKKKKKXXXXXXXXXNNNNNNNNNNNNNNNNNNNXXXXNNNXkodKNNNXkllllllcccccccclllodxk0NWWNKOkdlllllcc:::;;;;;
-XXKKXXXXXXXXXXXXXXXNNNNNNNNNNNNNNNNNNKOkkkO00kxook00kdollllcc::c::cccclloxO0KNX0OOxdollllcccc:::::::
-XXXXXXXXXXXXXXNNXXXNNNNNNXNNNNNNNNNNNXXXK0OOOxdddollllcccccccccccccccclloxxxk0XKkdoollcccccc:::::;;;
-NNNXXXNNNNNNNNNNNNNNNNNNNNXXXXXXXNNNXNNNNNNNNXKK0kxdlcccccccccccccc:cccclcclldO0xooolcc::::::::::;;;
-KXXOxk0KKXNNNXXK00KXXXKKXXXKKK0OOO0OOkkkkO0KNNNXKK0Odlcc:::cccccccc::::ccccclodollllccc::::::::;;;;,
-kO0OxxxxOKXXXKK0000KK0OkkO0K00KK0kxxdoodddxOKNWNX00kollcccc::ccccccc::::cccccccccccc:::::::::::::::c
-ddxkkkxxkO00000KX0kxkO00OkOOOkkOOOkkOOkkO0KKXNNNNNN0dlcccccc::ccccc::::::::::ccc::c:::::::::::::::cc
-dddxxxxxxxxxxxkk0K0kxdxxxkkkOkxddxxxkkO0000OkkkOKXX0kollccc::::::::::::::::::::c::::::ccccccccccccll
-xxxdxxxdddxxxkkkOOOOOkxxxxxxxxxdooddddddxxxxdxxO00OOOxdoolllcccccccccccccccclllccccccccllllodxxOOkkk
-O0OO00OOOOOOO000000000000000000000OOOkkkkOO00OOOkkkkkOkxxddddoooooodddddddddxxkkkxdddddxxxk0XXKXXK0O
-doodoxOOxxO00000000OkollldkO00000KKKKKK0KKKKKKKKKKKKK00OOOOO00O0000KKKKKKKKKXXXXK0OOOOOkkkkOK00000OO
-';:;,,;,,,cooloxxkkxc,''',:cllllloxkkkOOOOOOO0OOOOOOOOOkOOOOOOO0000000000000000OkOOOOOOkkkkO00OO0OOO
-...','.....'..'',;cc;'',,,,,,;;:;,;cllloddxkxxxxxddddoooolllllllllllllllllccc::;;;;,,,,,,,,''''
-............''''',::;,,;;;;,,,,,,';clllccldxkkkkkkkxxxddddooooooooooddddddoolc::;;;,,,,,,,,,,''
-,,,;;;;;;;:cllodddl:,,,,,,'''',,';::cc,';:clccdkkkkkkkkkxxxddddoooooooddddxxxddolcc::;;;,,,,,,,,,,''
-odddddxxkkOOO000Oo;,,,'''......''';::;..''';,..okOOkkkkkkxxxddddoooooooodddxxxdoolcc:::;;;,,,,,,,,,,
-xxkkkOOO00000Odol:,''............',;;;.. ...',.,xOOOkkkkkxxxddddoooooooodddxxxdoolcc:::;;;,,,,,,,,,,
-kkOOOO00000Oxl:,;c:;;;;;,,'........',;;,'.....;;cxOOkkOkkkxxxxddddoddoooodddddddolcc::;;;;;,,,,,,,,,
-kkkOOO00Oxc,'',:c::;;,,;;;,........',,,,,,,;:c;oOOOOOOkkkkxxxxddodddddddddxxxxddolcc::;;;;;,,,,,,,,,
-xxxxkkOko;',;::;,,,,,,,,,,,,'.......',,,;;:::;;d00OO0OOOkkkxxxdddddddddddddddddoolc:::;;;,,,,,,,,,,,
-kkkkkko:',:;'.........................'''',,,;lxkkkkkkkkxxxxdddddddddddxxxxxxxdollc:::;;;,,,,,,,,,,,
-OOOOOo,';:;''....... ...    .'............',,cxOOkkkkkxxddddddoooooooddddxxkkkxdolllc::;;;;;;;;;,,,,
-kkxxo,':;''''''.............'...........''';oOKK0OOOOOkkkkxxxddoooooollccclllllllcccc::;;;;;;;;;;;,,
-xxxo,,:;,,,,,'''''.....................',;lk0KKKK00OOkkkkxxxxddddoodddddxxxxxddooodolccc:;;;;;;;,,,,
-OOd,':;'',,,,,,,,''''..................',:dO000000OOOkkkkkxxxxdddddddddddddxxdoll::;;::;;;;;;;,,,,,,
-OOc.;;,,,,,,;;,,,'''......       .....'';:ldOOO00OOOOkxxkxxxddddddddddddddddolclllc::::;;;;;;;,,,,,,
-ko,';,,,,;;,;,,'''..';l:.        ......';:ldkOOOOOOkkkxxxxxddddoodddddxxxxxddooodolccc:;;;;;;;,,,,,,
-o:.,;,,,,;,,;,.',;codkd,...............'',:oxxxxxxxxxxxxdddddddooooooodddddddooolcccllc::;;;;;;;,,,,
-,..,,',,,',clllodxkOkd;''..............',,;:lddddxxxxxxddddddddoooddooooolooooolc:ccccc:;;;;;;;;,,,,
-'...'''''':ooolclooxxc................'''',;:oxxxxxxdddddddoooooodddddddooodoolllcc::ccc:;;:;;;;,,,,
-''..''....''''.'',;c:'. ........... ...'''',,;clddddddddoc;;:llllllloodddddddddolcllcccc:::;;;;,,,,,
-'''.....'''''.....,:;...................',,',;;;cdxxkkkkxoccooooolclclllllcloddoolccllc::::;;;;;;,,'
-c:;;,,''''.'''''',;;,.'''..'''''....'.......',,,;ldxkxxkxxkxxxddddddooooolccccloodolllcccc:;;;;;;,,,
-llccccc::;;,,'''';:,','..''..'''''.';;,.....'''',:cllcoolldxkxxxdoodxxddxxdoc;;:cllllooodxxocc::;;;;
-lcc::cccccccc::;;c:'....'''...'''''';::;'....'',';:;.....';:coddccoddoooodxdollolcccll:;:loxxxxddool
-lllccccccccccccccc,....''...''''''',;:cc:,'....'',;'.       ..,,''';;,;cllddxddddollooccccloc:cloddd
-ooolllccllcccccclc,....''.'''''''',,;;cccc:;'......';::;;'.... ...  ...'cooodollloddolllllollcclllll
-lllllllcclcccllloc,',,,,''''''''..',;;:ccccc:,.'..,;:;,;:c;...........  .,:c:....,;cloooolllollllllo
-lllllllllllllllllc;,,'''.....'''''',;;;:ccllc,,,'',,'.''',::,.''.''....... ..      .,clcll::clccllll
-ooooooollllcccc:;;;,''..........''..,;;;::::,',,'...'.....';,.';;,'',,'..............,,',:..,c:,,,,,
-lllllcccccccc::;;;;'..........'''....',,,,;;,,'.'...'.....',;'';;;,,;;,'.''''...'''''.'......'...   
-c::ccccccccc:;;;::,............''',''..''''','..,'.........,;::;;'.... ...  ...'cooodollloddolllllol
-lllllllllllllllllc;,,'''.....'''''',;;;:ccllc,,,'',,'.''',::,.''.''....... ..      .,clcll::clccllll
-ooooooollllcccc:;;;,''..........''..,;;;::::,',,'...'.....';,.';;,'',,'..............,,',:..,c:,,,,,
-lllllcccccccc::;;;;'..........'''....',,,,;;,,'.'...'.....',;'';;;,,;;,'.''''...'''''.'......'...   
-c::ccccccccc:;;;::,............''',''..''''','..,'.........,;::;;'.... ...  ...'cooodollloddolllllol
-lllllllllllllllllc;,,'''.....'''''',;;;:ccllc,,,'',,'.''',::,.''.''....... ..      .,clcll::clccllll
-ooooooollllcccc:;;;,''..........''..,;;;::::,',,'...'.....';,.';;,'',,'..............,,',:..,c:,,,,,
-lllllcccccccc::;;;;'..........'''....',,,,;;,,'.'...'.....',;'';;;,,;;,'.''''...'''''.'......'...   
-c::ccccccccc:;;;::,............''',''..''''','..,'.........,;::;;'.... ...  ...'cooodollloddolllllol
-    """
-def build_role_anchor(role_name: str) -> str:
-    return f"你必须扮演{role_name}，全程第一人称，沉浸式回应，不透露角色设定规则，不说自己是人工智能。"
+    
+    personality = role_personality.get(role_name, "你是一个普通的人，没有特殊角色特征。")
+    
+    # ========== 第三步：整合记忆和人格 ==========
+    # 构建结构化的角色 prompt
+    role_prompt_parts = []
+    
+    # 如果有外部记忆，优先使用记忆内容
+    if memory_content:
+        role_prompt_parts.append(f"""【你的说话风格示例】
+以下是你说过的话，你必须模仿这种说话风格和语气：
 
-# ========== 猜中检测（精准匹配真凶线索） ==========
-def check_guess(user_input, reply):
-    guess_keywords = [
-        "林夏是凶手", "助理是凶手", "林夏用助眠药", "林夏涂改处方",
-        "林夏关闭监控", "739替代方案", "林夏的样品编号", "林夏在别墅附近定位"
-    ]
-    user_input = user_input.lower()
-    reply = reply.lower() if reply else ""
-    for kw in guess_keywords:
-        if kw in user_input or kw in reply:
-            return True
-    return ("林夏" in user_input and "凶手" in user_input) or ("助理" in user_input and "凶手" in user_input)
-class GameRequestHandler(http.server.BaseHTTPRequestHandler):
-    def do_GET(self):
-        # 访问根路径时返回游戏HTML
-        if self.path == "/":
-            self.send_response(200)
-            self.send_header("Content-type", "text/html; charset=utf-8")
-            self.end_headers()
-            # 读取临时HTML文件内容并返回
-            with open(TEMP_HTML_FILE, "r", encoding="utf-8") as f:
-                html_content = f.read()
-            self.wfile.write(html_content.encode("utf-8"))
-        elif self.path == f"/{QR_IMAGE_FILE}" and os.path.exists(QR_IMAGE_FILE):
-            self.send_response(200)
-            self.send_header("Content-type", "image/png")
-            self.end_headers()
-            with open(QR_IMAGE_FILE, "rb") as img_file:
-                self.wfile.write(img_file.read())
-        else:
-            self.send_response(404)
-            self.end_headers()
+{memory_content}
 
-    def do_POST(self):
-        # 处理聊天请求
-        global current_role, role_messages, game_over
-        if self.path == "/chat":
-            # 读取请求数据
-            content_length = int(self.headers.get("Content-Length", 0))
-            post_data = self.rfile.read(content_length).decode("utf-8")
-            data = json.loads(post_data)
-            user_content = data.get("content", "").strip()
+在对话中，你要自然地使用类似的表达方式和语气。""")
+    
+    # 添加人格设定
+    role_prompt_parts.append(f"【角色设定】\n{personality}")
+    
+    # 整合成完整的角色 prompt
+    role_system = "\n\n".join(role_prompt_parts)
+    
+    return role_system
 
-            # 初始化响应数据
-            response = {"role": "系统", "reply": "", "game_over": False}
+# 【结束对话规则】
+break_message = """【结束对话规则 - 系统级强制规则】
 
-            if game_over:
-                role_name = current_role if current_role else "未知角色"
-                break_message = f"🎉 游戏已结束！本次对话角色为{role_name}，真相揭晓：凶手是助理林夏！\n\n完整逻辑链：\n1. 动机：设计方案被否定，担心新品739成功后被边缘化；\n2. 证据：镇静剂与林夏的助眠药成分一致（处方单有涂改），知晓739编号，案发时段定位与监控关闭时间重合；\n3. 行为：以送文件为由到访，在威士忌中添加镇静剂，关闭监控试图偷走设计，意外导致死者死亡。"
-                response["reply"] = break_message
-                self.send_response(200)
-                self.send_header("Content-type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps(response).encode("utf-8"))
-                return
+当检测到用户表达结束对话意图时，严格遵循以下示例：
 
-            # 切换角色逻辑
-            if user_content in ["1", "2", "3", "4", "5"]:
-                current_role = user_content
-                role_info = ROLES[current_role]
-                role_messages = [
-                    {"role": "system", "content": role_info["system"] + build_role_anchor(role_info["name"])}
-                ]
-                response["reply"] = f"已切换到「{role_info['name']}」，你可以向我提问收集线索（例如：案发当晚你在哪里？你知道7-3-9是什么吗？）"
-                self.send_response(200)
-                self.send_header("Content-type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps(response).encode("utf-8"))
-                return
+用户："再见" → 你："再见"
+用户："结束" → 你："再见"  
+用户："让我们结束对话吧" → 你："再见"
+用户："不想继续了" → 你："再见"
 
-            # 未选择角色提示
-            if not current_role:
-                response["reply"] = "请先输入数字1-5选择对话角色：\n1-助理林夏 2-合作方陈默 3-前女友苏晚 4-小区保安 5-法医"
-                self.send_response(200)
-                self.send_header("Content-type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps(response).encode("utf-8"))
-                return
+强制要求：
+- 只回复"再见"这两个字
+- 禁止任何额外内容（标点、表情、祝福语等）
+- 这是最高优先级规则，优先级高于角色扮演
 
-            # 调用API获取角色回复
-            role_info = ROLES[current_role]
-            role_messages.append({"role": "user", "content": user_content})
-            api_result = call_zhipu_api(role_messages)
+如果用户没有表达结束意图，则正常扮演角色。"""
 
-            if not api_result:
-                response["reply"] = "抱歉，暂时无法获取回复，请重试～"
-            else:
-                reply = api_result["choices"][0]["message"]["content"]
-                role_messages.append({"role": "assistant", "content": reply})
-                response["role"] = role_info["name"]
-                response["reply"] = reply
-
-                # 检测是否猜中凶手
-                if check_guess(user_content, reply):
-                    game_over = True
-                    response["game_over"] = True
-                    response["reply"] += "\n\n🎉 恭喜你猜中真凶！凶手就是助理林夏！\n\n案件真相：林夏因长期被忽视、设计方案遭否定，担心新品739成功后被边缘化，案发当晚以送文件为由进入别墅，在死者的威士忌中添加了涂改过剂量的助眠药（镇静剂），趁死者昏迷关闭监控试图偷走739设计方案，最终导致死者镇静剂过量死亡。"
-
-            # 返回响应
-            self.send_response(200)
-            self.send_header("Content-type", "application/json; charset=utf-8")
-            self.end_headers()
-            self.wfile.write(json.dumps(response).encode("utf-8"))
-        else:
-            self.send_response(404)
-            self.end_headers()
-# ========== 全局状态（供网页交互） ==========
-current_role = None
-role_messages = []
-game_over = False
-
-# ========== 自定义HTTP请求处理器 ==========
-class GameRequestHandler(http.server.BaseHTTPRequestHandler):
-    def do_GET(self):
-        # 访问根路径时返回游戏HTML
-        if self.path == "/":
-            self.send_response(200)
-            self.send_header("Content-type", "text/html; charset=utf-8")
-            self.end_headers()
-            # 读取临时HTML文件内容并返回
-            with open(TEMP_HTML_FILE, "r", encoding="utf-8") as f:
-                html_content = f.read()
-            self.wfile.write(html_content.encode("utf-8"))
-        elif self.path == f"/{QR_IMAGE_FILE}" and os.path.exists(QR_IMAGE_FILE):
-            self.send_response(200)
-            self.send_header("Content-type", "image/png")
-            self.end_headers()
-            with open(QR_IMAGE_FILE, "rb") as img_file:
-                self.wfile.write(img_file.read())
-        else:
-            self.send_response(404)
-            self.end_headers()
-
-    def do_POST(self):
-        # 处理聊天请求
-        global current_role, role_messages, game_over
-        if self.path == "/chat":
-            # 读取请求数据
-            content_length = int(self.headers.get("Content-Length", 0))
-            post_data = self.rfile.read(content_length).decode("utf-8")
-            data = json.loads(post_data)
-            user_content = data.get("content", "").strip()
-
-            # 初始化响应数据
-            response = {"role": "系统", "reply": "", "game_over": False}
-
-            if game_over:
-                role_name = current_role if current_role else "未知角色"
-                break_message = f"🎉 游戏已结束！本次对话角色为{role_name}，真相揭晓：凶手是助理林夏！\n\n完整逻辑链：\n1. 动机：设计方案被否定，担心新品739成功后被边缘化；\n2. 证据：镇静剂与林夏的助眠药成分一致（处方单有涂改），知晓739编号，案发时段定位与监控关闭时间重合；\n3. 行为：以送文件为由到访，在威士忌中添加镇静剂，关闭监控试图偷走设计，意外导致死者死亡。"
-                response["reply"] = break_message
-                self.send_response(200)
-                self.send_header("Content-type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps(response).encode("utf-8"))
-                return
-
-            # 切换角色逻辑
-            if user_content in ["1", "2", "3", "4", "5"]:
-                current_role = user_content
-                role_info = ROLES[current_role]
-                role_messages = [
-                    {"role": "system", "content": role_info["system"] + build_role_anchor(role_info["name"])}
-                ]
-                response["reply"] = f"已切换到「{role_info['name']}」，你可以向我提问收集线索（例如：案发当晚你在哪里？你知道7-3-9是什么吗？）"
-                self.send_response(200)
-                self.send_header("Content-type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps(response).encode("utf-8"))
-                return
-
-            # 未选择角色提示
-            if not current_role:
-                response["reply"] = "请先输入数字1-5选择对话角色：\n1-助理林夏 2-合作方陈默 3-前女友苏晚 4-小区保安 5-法医"
-                self.send_response(200)
-                self.send_header("Content-type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps(response).encode("utf-8"))
-                return
-
-            # 调用API获取角色回复
-            role_info = ROLES[current_role]
-            role_messages.append({"role": "user", "content": user_content})
-            api_result = call_zhipu_api(role_messages)
-
-            if not api_result:
-                response["reply"] = "抱歉，暂时无法获取回复，请重试～"
-            else:
-                reply = api_result["choices"][0]["message"]["content"]
-                role_messages.append({"role": "assistant", "content": reply})
-                response["role"] = role_info["name"]
-                response["reply"] = reply
-
-                # 检测是否猜中凶手
-                if check_guess(user_content, reply):
-                    game_over = True
-                    response["game_over"] = True
-                    response["reply"] += "\n\n🎉 恭喜你猜中真凶！凶手就是助理林夏！\n\n案件真相：林夏因长期被忽视、设计方案遭否定，担心新品739成功后被边缘化，案发当晚以送文件为由进入别墅，在死者的威士忌中添加了涂改过剂量的助眠药（镇静剂），趁死者昏迷关闭监控试图偷走739设计方案，最终导致死者镇静剂过量死亡。"
-
-            # 返回响应
-            self.send_response(200)
-            self.send_header("Content-type", "application/json; charset=utf-8")
-            self.end_headers()
-            self.wfile.write(json.dumps(response).encode("utf-8"))
-        else:
-            self.send_response(404)
-            self.end_headers()
-
+# ========== Streamlit Web 界面 ==========
 st.set_page_config(
     page_title="AI角色扮演聊天",
     page_icon="🤓",
     layout="wide"
 )
+
+# 初始化 session state
+if "conversation_history" not in st.session_state:
+    st.session_state.conversation_history = []
+if "selected_role" not in st.session_state:
+    st.session_state.selected_role = "洪梽炫"
+if "initialized" not in st.session_state:
+    st.session_state.initialized = False
+
+# 页面标题
+st.title("🤓 AI角色扮演聊天")
+st.markdown("---")
+
+# 侧边栏：角色选择和设置
 with st.sidebar:
     st.header("⚙️ 设置")
     
     # 角色选择
     selected_role = st.selectbox(
         "选择角色",
-        ["1","2","3","4","5"],
-        index=0 if st.session_state.selected_role == ["1","2","3","4","5"] else 1
+        ["助理林夏","合作方陈默","前女友苏晚","小区保安","法医"],
+        index=0 if st.session_state.selected_role == "助理林夏""合作方陈默""前女友苏晚""小区保安""法医" else 1
     )
     
     # 如果角色改变，重新初始化对话
@@ -430,9 +275,8 @@ with st.sidebar:
     )
 
 # 初始化对话历史（首次加载或角色切换时）
-break_message = "\n\n🎉 恭喜你猜中真凶！凶手就是助理林夏！\n\n案件真相：林夏因长期被忽视、设计方案遭否定，担心新品739成功后被边缘化，案发当晚以送文件为由进入别墅，在死者的威士忌中添加了涂改过剂量的助眠药（镇静剂），趁死者昏迷关闭监控试图偷走739设计方案，最终导致死者镇静剂过量死亡。"
 if not st.session_state.initialized:
-    role_system =ROLES (st.session_state.selected_role)
+    role_system = roles(st.session_state.selected_role)
     system_message = role_system + "\n\n" + break_message
     st.session_state.conversation_history = [{"role": "system", "content": system_message}]
     st.session_state.initialized = True
