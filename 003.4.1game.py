@@ -225,7 +225,7 @@ break_message = """【结束对话规则 - 系统级强制规则】
 
 # ========== Streamlit Web 界面 ==========
 st.set_page_config(
-    page_title="AI角色扮演聊天",
+    page_title="谁是凶手",
     page_icon="🤓",
     layout="wide"
 )
@@ -234,12 +234,12 @@ st.set_page_config(
 if "conversation_history" not in st.session_state:
     st.session_state.conversation_history = []
 if "selected_role" not in st.session_state:
-    st.session_state.selected_role = "洪梽炫"
+    st.session_state.selected_role = "助理林夏","合作方陈默","前女友苏晚","小区保安","法医"
 if "initialized" not in st.session_state:
     st.session_state.initialized = False
 
 # 页面标题
-st.title("🤓 AI角色扮演聊天")
+st.title("🤓 谁是凶手")
 st.markdown("---")
 
 # 侧边栏：角色选择和设置
