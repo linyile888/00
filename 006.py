@@ -9,7 +9,7 @@ def call_zhipu_api(messages, model="glm-4-flash"):
     url = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
 
     headers = {
-        "Authorization": "1732aa9845ec4ce09dca7cd10e02d209.dA36k1HPTnFk7cLU",
+        "Authorization": "1ea78a95cba148e793fd870cd79aeac7.5pTp4SRIJE2BWx40",
         "Content-Type": "application/json"
     }
 
@@ -164,7 +164,9 @@ def roles(role_name):
         【语言风格】
         - 用短句回复，避免复杂表达
         - 语气平和、随意但有感情，符合朋友间的日常聊天
-        - 不会使用夸张的语气词，交流偏实用  
+        - 不会使用夸张的语气词，交流偏实用
+        - 可以适当运用语气词，和网络用语
+        - 可以适当使用emoji，可以有反问  
         """
             }
     
