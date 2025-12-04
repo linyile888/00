@@ -1,5 +1,5 @@
 # ========== API配置 ==========
-ZHIPU_API_KEY = "1ea78a95cba148e793fd870cd79aeac7.5pTp4SRIJE2BWx40"  # 替换为你的API密钥
+ZHIPU_API_KEY = "999fb227c3f44308bf9096a42c18e339.YFxcpSNLfq1VQZqj"  # 替换为你的API密钥
 ZHIPU_API_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
 MODEL_NAME = "glm-4-flash"
 
@@ -39,6 +39,14 @@ PARTNER_JOBS = {
     "2024年": ["程序员", "咖啡师", "旅行博主"],
     "2077年": ["AI训练师", "太空导游", "量子工程师"]
 }
+# 新增：伴侣性格选项（对应玩家偏好）
+PARTNER_PERSONALITY_TYPES = [
+    "勇猛直率", "温柔体贴", "幽默风趣", "神秘内敛", "活泼开朗", "沉稳冷静"
+]
+# 新增：伴侣爱好选项（对应玩家偏好）
+PARTNER_HOBBIES_TYPES = [
+    "户外探险", "艺术创作", "手工制作", "知识探索", "社交聚会", "独处冥想"
+]
 REJECT_TEXTS = [
     "嫌TA不够酷？这次给你整个狠活~",
     "眼光挺挑呀！安排一个更绝的伴侣😎",
@@ -46,29 +54,44 @@ REJECT_TEXTS = [
     "看来不是天命之人，重新匹配ing✨"
 ]
 
-# ========== 新增：交流功能配置 ==========
-# 聊天记录保存路径（自动创建）
+# ========== 交流功能配置 ==========
 CHAT_SAVE_FOLDER = "partner_chats"
-# 人物设定Prompt模板（契合时代+职业）
 PERSONALITY_PROMPT_TEMPLATE = """
 为{partner_era}的{partner_job}生成详细人物设定，要求：
-1. 性格：2-3个关键词（符合时代背景，比如远古猎手=勇猛、直率、警惕）；
-2. 爱好：2个符合时代的爱好（比如中世纪骑士=马术、剑术，未来AI训练师=调试AI、太空漫步）；
-3. 口头禅：1句口语化短语（符合身份，比如disco舞者=“摇摆起来！”）；
-4. 说话风格：简短描述（比如巫祝=神秘、短句、带祭祀术语）；
-5. 背景小故事：1句话（比如“曾独自猎杀过猛犸象，被部落奉为英雄”）；
+1. 性格：2-3个关键词（必须包含{target_personality}，符合时代背景）；
+2. 爱好：2个符合时代的爱好（至少1个匹配{target_hobbies}）；
+3. 口头禅：1句口语化短语（符合身份和性格）；
+4. 说话风格：简短描述（贴合性格和时代）；
+5. 背景小故事：1句话（呼应性格和爱好）；
 6. 整体风格：贴合时代，不出现现代元素，语言简洁。
 输出格式：严格按照JSON格式，无额外文字，key分别为：personality, hobbies, catchphrase, speaking_style, background。
 """
-# 伴侣回复Prompt模板（基于人物设定）
 REPLY_PROMPT_TEMPLATE = """
 你是{partner_era}的{partner_job}，人物设定如下：
 {personality_json}
-
-现在和{user_age}岁的{user_region}用户交流，要求：
+玩家信息：性别{user_gender}，年龄{user_age}，身高{user_height}cm，体重{user_weight}kg，喜欢{user_hobbies}。
+现在和玩家交流，要求：
 1. 严格遵循自己的人物设定（性格、说话风格、口头禅）；
 2. 回复简短（1-3句话，每句≤15字），符合口语化交流；
 3. 不出现现代网络用语，贴合自身时代背景；
-4. 自然回应用户消息，不要生硬，可适当使用表情符号（契合场景）。
+4. 结合玩家信息和爱好回应，增加共鸣感；
+5. 自然回应用户消息，不要生硬，可适当使用表情符号（契合场景）。
 用户消息：{user_message}
 """
+
+# ========== 新增：玩家问卷配置 ==========
+# 问卷步骤配置
+QUESTIONNAIRE_STEPS = [
+    {"step": 1, "title": "基本信息", "desc": "填写你的基础资料～"},
+    {"step": 2, "title": "偏好设置", "desc": "选择你喜欢的伴侣类型～"}
+]
+# 性别选项
+GENDER_OPTIONS = ["男", "女", "其他"]
+# 身高范围（滑块配置）
+HEIGHT_RANGE = (150, 190)
+# 体重范围（滑块配置）
+WEIGHT_RANGE = (40, 100)
+# 玩家爱好选项（多选）
+USER_HOBBIES_OPTIONS = [
+    "户外探险", "艺术创作", "手工制作", "知识探索", "社交聚会", "独处冥想", "游戏娱乐", "美食烹饪"
+]
