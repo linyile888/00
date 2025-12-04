@@ -1,6 +1,9 @@
 import streamlit as st
 import plotly.express as px
-from config import PARTNER_ERAS, PARTNER_JOBS
+from config import (
+    PARTNER_ERAS, PARTNER_JOBS,
+    REGION_RATIO, ORIENTATION_RATIO  # 新增：导入缺失的配置变量
+)
 
 def render_match_settings() -> tuple:
     """
@@ -18,14 +21,14 @@ def render_match_settings() -> tuple:
         step=1
     )
     
-    # 地区下拉框
+    # 地区下拉框（使用导入的 REGION_RATIO）
     region = st.sidebar.selectbox(
         "希望伴侣所在地区",
         options=list(REGION_RATIO.keys()),
         index=0
     )
     
-    # 取向单选框
+    # 取向单选框（使用导入的 ORIENTATION_RATIO）
     orientation = st.sidebar.radio(
         "你的情感取向",
         options=list(ORIENTATION_RATIO.keys()),
@@ -39,7 +42,7 @@ def render_match_settings() -> tuple:
 
 def render_match_pool_preview(age: int, region: str):
     """渲染匹配池预览（主页面顶部）"""
-    from config import ALIVE_HUMANS, REGION_RATIO
+    from config import ALIVE_HUMANS  # 局部导入，避免循环导入
     # 计算匹配池人数（亿）
     pool_size = round(ALIVE_HUMANS * REGION_RATIO[region] * 0.07, 1)
     st.markdown(f"""
