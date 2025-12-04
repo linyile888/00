@@ -1,5 +1,5 @@
 # ========== API配置 ==========
-ZHIPU_API_KEY = "999fb227c3f44308bf9096a42c18e339.YFxcpSNLfq1VQZqj"  # 替换为你的API密钥
+ZHIPU_API_KEY = "1ea78a95cba148e793fd870cd79aeac7.5pTp4SRIJE2BWx40"  # 替换为你的API密钥
 ZHIPU_API_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
 MODEL_NAME = "glm-4-flash"
 
