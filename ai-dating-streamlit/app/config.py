@@ -12,7 +12,7 @@ PARTNER_DATA_PATH = os.path.join(DATA_DIR, "partner_data.json")
 CHAT_RECORD_PATH = os.path.join(DATA_DIR, "chat_records.json")
 
 # 智谱AI API配置（替换为你的密钥）
-ZHIPU_API_KEY = "你的智谱AI API密钥"
+ZHIPU_API_KEY = "1ea78a95cba148e793fd870cd79aeac7.5pTp4SRIJE2BWx40"
 ZHIPU_MODEL = "glm-4"
 
 # 问卷配置（保留核心字段）
