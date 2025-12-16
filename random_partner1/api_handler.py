@@ -1,14 +1,23 @@
 import requests
 import json
-import streamlit as st  # 新增：导入streamlit读取secrets
+import streamlit as st
+import os  # 新增：导入os模块读取环境变量
 
 def call_zhipu_api(prompt: str, model: str = "glm-4") -> str:
     """调用智谱API生成内容（人物设定/对话）"""
     url = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+    
+    # 核心修复：先读Secrets，失败则读环境变量
+    try:
+        api_key = st.secrets["ZHI_PU_API_KEY"]
+    except KeyError:
+        api_key = os.getenv("ZHI_PU_API_KEY")  # 从环境变量读取
+        if not api_key:
+            return "错误：未配置智谱API Key！请在secrets.toml或环境变量中设置ZHI_PU_API_KEY"
+
     headers = {
         "Content-Type": "application/json",
-        # 变更：从secrets读取API Key，替代硬编码
-        "Authorization": f"Bearer {st.secrets['ZHI_PU_API_KEY']}"
+        "Authorization": f"Bearer {api_key}"  # 使用读取到的API Key
     }
     payload = {
         "model": model,
@@ -29,7 +38,6 @@ def generate_partner_profile(preferences: dict) -> str:
     3. 与用户的匹配点
     用户偏好：{json.dumps(preferences, ensure_ascii=False)}
     输出格式：简洁的人物卡片，口语化表述。"""
-    # 变更：移除硬编码api_key，使用函数默认的secrets读取逻辑
     return call_zhipu_api(prompt)
 
 def generate_chat_response(partner_profile: str, user_input: str) -> str:
@@ -37,5 +45,4 @@ def generate_chat_response(partner_profile: str, user_input: str) -> str:
     prompt = f"""你是用户的随机知心伴侣，人物设定：{partner_profile}
     用户对你说：{user_input}
     请以伴侣的身份回复，语气贴合人物设定，字数50-100字。"""
-    # 变更：移除硬编码api_key，使用函数默认的secrets读取逻辑
     return call_zhipu_api(prompt)
