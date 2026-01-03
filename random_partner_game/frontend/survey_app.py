@@ -19,6 +19,16 @@ from PIL import Image
 if PYGAME_AVAILABLE:
     pygame.init()
 
+# 加载像素字体（报错预判：字体文件缺失）
+try:
+    if PYGAME_AVAILABLE:
+        pygame_font = pygame.font.Font(FONT_PATH, 24)
+    else:
+        raise FileNotFoundError()
+except FileNotFoundError:
+    print(f"[警告] 像素字体未找到或 pygame 不可用，请检查路径：{FONT_PATH}，使用默认字体替代")
+    pygame_font = None
+
 # Streamlit页面配置（星露谷风：复古像素）
 st.set_page_config(
     page_title="随机伴侣 - 问卷匹配",
@@ -43,16 +53,6 @@ try:
 except FileNotFoundError:
     print(f"[警告] 问卷背景图未找到，请检查路径：{BACKGROUND_IMAGE_PATH}")
     bg_image = None
-
-# 加载像素字体（报错预判：字体文件缺失）
-try:
-    if PYGAME_AVAILABLE:
-        pygame_font = pygame.font.Font(FONT_PATH, 24)
-    else:
-        raise FileNotFoundError()
-except FileNotFoundError:
-    print(f"[警告] 像素字体未找到或 pygame 不可用，请检查路径：{FONT_PATH}，使用默认字体替代")
-    pygame_font = None
 
 # 全局状态管理（存储问卷答案、匹配结果）
 if "survey_answers" not in st.session_state:
