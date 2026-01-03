@@ -1,5 +1,13 @@
 import streamlit as st
-import pygame
+# 尝试延迟导入 pygame（Streamlit Cloud 环境可能未安装）
+try:
+    import pygame
+    PYGAME_AVAILABLE = True
+except Exception:
+    pygame = None
+    PYGAME_AVAILABLE = False
+    print("[警告] pygame 未安装，动画和粒子效果将被禁用。")
+
 import requests
 import json
 from frontend.particle_effect import ParticleEffect
@@ -8,7 +16,8 @@ from frontend.config import FONT_PATH, BACKGROUND_IMAGE_PATH, SURVEY_QUESTIONS
 from PIL import Image
 
 # 初始化Pygame（用于粒子和动画）
-pygame.init()
+if PYGAME_AVAILABLE:
+    pygame.init()
 
 # Streamlit页面配置（星露谷风：复古像素）
 st.set_page_config(
@@ -37,10 +46,13 @@ except FileNotFoundError:
 
 # 加载像素字体（报错预判：字体文件缺失）
 try:
-    pygame_font = pygame.font.Font(FONT_PATH, 24)
+    if PYGAME_AVAILABLE:
+        pygame_font = pygame.font.Font(FONT_PATH, 24)
+    else:
+        raise FileNotFoundError()
 except FileNotFoundError:
-    print(f"[警告] 像素字体未找到，请检查路径：{FONT_PATH}，使用默认字体替代")
-    pygame_font = pygame.font.Font(None, 24)
+    print(f"[警告] 像素字体未找到或 pygame 不可用，请检查路径：{FONT_PATH}，使用默认字体替代")
+    pygame_font = None
 
 # 全局状态管理（存储问卷答案、匹配结果）
 if "survey_answers" not in st.session_state:
@@ -136,35 +148,34 @@ def submit_survey_data():
 # 3. 绘制穿越动画和匹配结果
 def draw_transition_and_result():
     if st.session_state.transition_running:
-        # 用Streamlit的空容器绘制Pygame动画
+        if not PYGAME_AVAILABLE:
+            # pygame 不可用时用 Streamlit 的占位提示替代动画
+            with st.spinner("正在播放匹配动画（已降级，pygame 未安装）..."):
+                st.sleep(2)
+            st.session_state.transition_running = False
+            st.rerun()
+
+        # 以下为 pygame 可用时的原有动画逻辑
         animation_container = st.empty()
-        # 创建Pygame屏幕（隐藏，仅用于渲染）
         screen = pygame.Surface((1200, 800))
         if bg_image:
             screen.blit(pygame.image.fromstring(bg_image.tobytes(), bg_image.size, bg_image.mode), (0, 0))
         else:
             screen.fill((26, 26, 46))
 
-        # 初始化粒子效果和穿越动画
         particle_effect = ParticleEffect(1200, 800)
         transition_animation = TransitionAnimation(1200, 800)
         transition_animation.start()
 
-        # 渲染动画（循环直到动画结束）
         clock = pygame.time.Clock()
         while transition_animation.update():
-            # 更新粒子
             particle_effect.update()
-            # 绘制粒子
             particle_effect.draw(screen)
-            # 绘制穿越动画
             transition_animation.draw(screen)
-            # 转换为PIL图像并显示在Streamlit
             frame = Image.frombytes("RGB", screen.size, screen.get_buffer())
             animation_container.image(frame, use_column_width=True)
             clock.tick(60)
 
-        # 动画结束，显示匹配结果
         st.session_state.transition_running = False
         st.rerun()
 
@@ -219,6 +230,5 @@ def main():
         draw_transition_and_result()
     else:
         draw_survey()
-
 if __name__ == "__main__":
     main()
