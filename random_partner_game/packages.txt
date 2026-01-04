@@ -4,3 +4,8 @@ libsdl2-mixer-dev
 libsdl2-ttf-dev
 libfreetype6-dev
 libportmidi-dev
+python -m pip install -r d:\random_partner_game\requirements.txt
+streamlit run d:\random_partner_game\frontend\survey_app.py
+git add requirements.txt packages.txt
+git commit -m "add pygame and system deps for Streamlit Cloud"
+git push
