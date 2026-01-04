@@ -1,4 +1,4 @@
-pygame==2.5.2  # 可替换为你使用的 pygame 版本
-streamlit>=1.24.0
+pygame==2.6.1  # 可替换为你使用的 pygame 版本
+streamlit>=1.30.0
 requests
 Pillow
