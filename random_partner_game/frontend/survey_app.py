@@ -1,3 +1,30 @@
+# ========== 新增：修复模块路径 ==========
+import sys
+import os
+
+# 将项目根目录加入 Python 搜索路径（关键）
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(ROOT_DIR)
+
+# ========== 原有导入调整 ==========
+# 替换原第13行的导入（去掉 frontend. 前缀，直接从同目录导入）
+from particle_effect import ParticleEffect  # 改为相对路径导入
+
+# ========== 新增：兼容 pygame 缺失 ==========
+try:
+    import pygame
+except ImportError:
+    # 无 pygame 时禁用粒子效果，避免报错
+    class ParticleEffect:
+        def __init__(self, *args, **kwargs):
+            pass
+        def update(self, *args, **kwargs):
+            pass
+        def draw(self, *args, **kwargs):
+            pass
+
+# ========== 其余原有代码保持不变 ==========
+# （你的 Streamlit 应用逻辑、页面渲染等代码）
 import streamlit as st
 
 # 延迟并有条件导入 pygame（避免在无 pygame 环境直接抛错）
@@ -12,7 +39,23 @@ except Exception as e:
 # 根据 pygame 是否可用，条件导入或提供降级占位实现
 if PYGAME_AVAILABLE:
     from .particle_effect import ParticleEffect
-    from frontend.transition_animation import TransitionAnimation
+    # 尝试相对导入 transition_animation，若失败再回退到顶级导入或占位实现
+    try:
+        from .transition_animation import TransitionAnimation
+    except Exception:
+        try:
+            from transition_animation import TransitionAnimation
+        except Exception as e:
+            print(f"[警告] 无法导入 TransitionAnimation：{e!r}，使用占位实现。")
+            class TransitionAnimation:
+                def __init__(self, w, h):
+                    pass
+                def start(self):
+                    pass
+                def update(self):
+                    return False
+                def draw(self, surface):
+                    pass
 else:
     class ParticleEffect:
         def __init__(self, w, h): 
@@ -35,8 +78,27 @@ else:
 import requests
 import json
 import sys
+import os
 import numpy as np
-from frontend.config import FONT_PATH, BACKGROUND_IMAGE_PATH, SURVEY_QUESTIONS
+
+# 尝试多种方式导入配置，兼容在 Streamlit 部署时无法作为 package 导入 frontend 的情况
+try:
+    from frontend.config import FONT_PATH, BACKGROUND_IMAGE_PATH, SURVEY_QUESTIONS
+except Exception:
+    try:
+        from .config import FONT_PATH, BACKGROUND_IMAGE_PATH, SURVEY_QUESTIONS
+    except Exception:
+        # 最后尝试把当前目录加入 sys.path 作为回退，然后按顶级模块导入
+        _base = os.path.dirname(os.path.abspath(__file__))
+        if _base not in sys.path:
+            sys.path.insert(0, _base)
+        try:
+            from config import FONT_PATH, BACKGROUND_IMAGE_PATH, SURVEY_QUESTIONS
+        except Exception as e:
+            print(f"[错误] 无法加载 config 模块：{e!r}，将使用内置默认值。")
+            FONT_PATH = os.path.join(_base, "assets", "fonts", "PressStart2P.ttf")
+            BACKGROUND_IMAGE_PATH = os.path.join(_base, "assets", "images", "background.png")
+            SURVEY_QUESTIONS = []
 from PIL import Image
 
 # 初始化Pygame（用于粒子和动画）
