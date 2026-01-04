@@ -1,30 +1,36 @@
 import streamlit as st
 
-# 延迟并有条件导入 pygame（防止 Streamlit Cloud 抛出 ModuleNotFoundError）
+# 延迟并有条件导入 pygame（避免在无 pygame 环境直接抛错）
 try:
     import pygame
     PYGAME_AVAILABLE = True
 except Exception:
     pygame = None
     PYGAME_AVAILABLE = False
-    print("[警告] pygame 未安装，动画和粒子效果将被禁用。")
+    print("[警告] pygame 未安装或不可用，已降级为无动画模式。")
 
 # 根据 pygame 是否可用，条件导入或提供降级占位实现
 if PYGAME_AVAILABLE:
     from frontend.particle_effect import ParticleEffect
     from frontend.transition_animation import TransitionAnimation
 else:
-    # 简单占位类，保证后续代码引用安全降级
     class ParticleEffect:
-        def __init__(self, w, h): pass
-        def update(self): pass
-        def draw(self, surface): pass
+        def __init__(self, w, h): 
+            pass
+        def update(self): 
+            pass
+        def draw(self, surface): 
+            pass
 
     class TransitionAnimation:
-        def __init__(self, w, h): pass
-        def start(self): pass
-        def update(self): return False
-        def draw(self, surface): pass
+        def __init__(self, w, h): 
+            pass
+        def start(self): 
+            pass
+        def update(self): 
+            return False
+        def draw(self, surface): 
+            pass
 
 import requests
 import json
