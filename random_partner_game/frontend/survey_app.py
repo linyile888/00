@@ -4,14 +4,14 @@ import streamlit as st
 try:
     import pygame
     PYGAME_AVAILABLE = True
-except Exception:
+except Exception as e:
     pygame = None
     PYGAME_AVAILABLE = False
-    print("[警告] pygame 未安装或不可用，已降级为无动画模式。")
+    print(f"[警告] pygame 未安装或不可用，已降级为无动画模式。异常：{e!r}")
 
 # 根据 pygame 是否可用，条件导入或提供降级占位实现
 if PYGAME_AVAILABLE:
-    from frontend.particle_effect import ParticleEffect
+    from .particle_effect import ParticleEffect
     from frontend.transition_animation import TransitionAnimation
 else:
     class ParticleEffect:
@@ -34,6 +34,8 @@ else:
 
 import requests
 import json
+import sys
+import numpy as np
 from frontend.config import FONT_PATH, BACKGROUND_IMAGE_PATH, SURVEY_QUESTIONS
 from PIL import Image
 
@@ -47,8 +49,8 @@ try:
         pygame_font = pygame.font.Font(FONT_PATH, 24)
     else:
         raise FileNotFoundError()
-except FileNotFoundError:
-    print(f"[警告] 像素字体未找到或 pygame 不可用，请检查路径：{FONT_PATH}，使用默认字体替代")
+except Exception as e:
+    print(f"[警告] 像素字体未找到或 pygame 不可用，请检查路径：{FONT_PATH}，使用默认字体替代。异常：{e!r}")
     pygame_font = None
 
 # Streamlit页面配置（星露谷风：复古像素）
@@ -72,8 +74,8 @@ st.markdown(hide_st_style, unsafe_allow_html=True)
 # 加载像素背景（报错预判：背景图路径错误）
 try:
     bg_image = Image.open(BACKGROUND_IMAGE_PATH).resize((1200, 800))
-except FileNotFoundError:
-    print(f"[警告] 问卷背景图未找到，请检查路径：{BACKGROUND_IMAGE_PATH}")
+except Exception as e:
+    print(f"[警告] 问卷背景图未找到或无法打开，请检查路径：{BACKGROUND_IMAGE_PATH}。异常：{e!r}")
     bg_image = None
 
 # 全局状态管理（存储问卷答案、匹配结果）
@@ -194,8 +196,15 @@ def draw_transition_and_result():
             particle_effect.update()
             particle_effect.draw(screen)
             transition_animation.draw(screen)
-            frame = Image.frombytes("RGB", screen.size, screen.get_buffer())
-            animation_container.image(frame, use_column_width=True)
+            try:
+                # 推荐使用 surfarray 将 Surface 转为 numpy 数组，再转为 PIL Image
+                arr = pygame.surfarray.array3d(screen)
+                arr = np.transpose(arr, (1, 0, 2))
+                frame = Image.fromarray(arr)
+                animation_container.image(frame, use_column_width=True)
+            except Exception as e:
+                print(f"[错误] Surface -> PIL 转换失败：{e!r}")
+                break
             clock.tick(60)
 
         st.session_state.transition_running = False
@@ -235,7 +244,7 @@ def draw_transition_and_result():
             if st.button("🚀 进入相遇场景", type="primary", use_container_width=True):
                 # 启动像素游戏（独立窗口运行）
                 import subprocess
-                subprocess.Popen([f"python", "frontend/pixel_game.py", str(partner["id"])])
+                subprocess.Popen([sys.executable, "frontend/pixel_game.py", str(partner["id"])])
 
 # 主页面逻辑
 def main():
