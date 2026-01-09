@@ -1,0 +1,8 @@
+{
+  "name": "Pixel Soulmate: Destiny's Encounter",
+  "description": "A high-immersion 2D pixel-art style interactive RPG where players complete a mystical survey to find their fated partner across different eras and professions, featuring particle effects and AI-driven dialogues.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
